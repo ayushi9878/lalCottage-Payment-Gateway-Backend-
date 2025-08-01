@@ -1,3 +1,4 @@
+
 # LalCottage Backend
 
 This is the backend for the LalCottage booking platform. It handles:
@@ -56,3 +57,7 @@ FIREBASE_ADMIN_PROJECT_ID=your_project_id
 
 4. Run the server:
    node server.js
+=======
+# lalCottage-Payment-Gateway-Backend-
+Lal Cottage Payment Gateway Backend Code using Razorpay
+
