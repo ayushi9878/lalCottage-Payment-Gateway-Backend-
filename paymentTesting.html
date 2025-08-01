@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Razorpay Test Payment</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+  <h2>Book a Room</h2>
+
+  <form id="bookingForm">
+    <label>
+      Name:
+      <input type="text" id="name" value="Rahul Sharma" required />
+    </label><br><br>
+
+    <label>
+      Room Type:
+      <select id="roomType">
+        <option value="Deluxe">Deluxe</option>
+        <option value="Standard">Standard</option>
+        <option value="Suite">Suite</option>
+      </select>
+    </label><br><br>
+
+    <label>
+      From Date:
+      <input type="date" id="fromDate" value="2025-08-01" required />
+    </label><br><br>
+
+    <label>
+      To Date:
+      <input type="date" id="toDate" value="2025-08-03" required />
+    </label><br><br>
+
+    <button type="submit">Pay Now</button>
+  </form>
+
+<script>
+  document.getElementById("bookingForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const bookingData = {
+      name: document.getElementById("name").value,
+      roomType: document.getElementById("roomType").value,
+      fromDate: document.getElementById("fromDate").value,
+      toDate: document.getElementById("toDate").value,
+       email: "rahul@example.com",     // ✅ Add this
+       userId: "abc123xyz"    
+    };
+
+    // ✅ Step 1: Create Order
+    const res = await fetch("http://localhost:5555/create-orderId", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: 400,
+        bookingData
+      }),
+    });
+
+    const order = await res.json();
+    console.log("Created Order:", order);
+
+    // ✅ Step 2: Open Razorpay Checkout
+   // Fix: Use `response.razorpay_order_id` — but make sure `order_id` was passed in Razorpay options
+
+const options = {
+  key: order.key, // Razorpay key
+  amount: order.amount,
+  currency: order.currency,
+  name: "Lal Cottage Booking",
+  description: "Room Booking Payment",
+  order_id: order.id, // ✅ Very important
+  handler: async function (response) {
+    console.log("Razorpay Response:", response);
+
+    // ✅ Check all keys exist
+    if (!response.razorpay_payment_id || !response.razorpay_order_id || !response.razorpay_signature) {
+      alert("Incomplete Razorpay response");
+      return;
+    }
+
+    // Step 3: Verify Payment
+    const verifyRes = await fetch("http://localhost:5555/verify-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+        bookingData,
+      }),
+    });
+
+    const result = await verifyRes.json();
+    console.log("Verification result:", result);
+    alert(JSON.stringify(result, null, 2));
+  },
+  theme: {
+    color: "#F37254",
+  },
+};
+
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+  });
+</script>
+
+</body>
+</html>
