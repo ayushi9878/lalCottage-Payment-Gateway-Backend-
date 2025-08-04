@@ -1,0 +1,12 @@
+# Don't upload environment variables
+.env
+
+# Don't upload Firebase Admin SDK credentials
+serviceAccountKey.json
+
+# Ignore node_modules (correct spelling)
+node_modules/
+
+# Optional: Ignore logs and system files
+*.log
+.DS_Store
