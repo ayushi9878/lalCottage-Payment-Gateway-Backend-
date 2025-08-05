@@ -26,10 +26,7 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-<<<<<<< HEAD
-// server.js - Updated endpoints to handle complex booking data
-
-// ✅ 1. Create Order (Fixed)
+// ✅ 1. Create Order (Fixed to handle complex booking data)
 app.post("/create-orderId", async (req, res) => {
   try {
     const { amount, currency = "INR", bookingData } = req.body;
@@ -72,24 +69,12 @@ app.post("/create-orderId", async (req, res) => {
     }
 
     console.log("📋 Creating order with safe notes:", safeNotes);
-=======
-// ✅ 1. Create Order
-app.post("/create-orderId", async (req, res) => {
-  try {
-    const { amount, currency = "INR", bookingData } = req.body;
-    if (!amount)
-      return res.status(400).json({ status: false, message: "Amount required" });
->>>>>>> 57cd434ae7cd4c9ad5832277c3bc41089370131f
 
     const order = await razorpay.orders.create({
       amount: amount * 100,
       currency,
       receipt: `receipt_${Date.now()}`,
-<<<<<<< HEAD
       notes: safeNotes,
-=======
-      notes: bookingData || {},
->>>>>>> 57cd434ae7cd4c9ad5832277c3bc41089370131f
     });
 
     res.json({
@@ -101,7 +86,6 @@ app.post("/create-orderId", async (req, res) => {
     });
 
   } catch (err) {
-<<<<<<< HEAD
     console.error("❌ Create order error:", err);
     console.error("📝 Request body:", JSON.stringify(req.body, null, 2));
     
@@ -114,13 +98,6 @@ app.post("/create-orderId", async (req, res) => {
 });
 
 // ✅ 2. Verify Payment (Updated to handle complex booking data)
-=======
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ✅ 2. Verify Payment (Client-side success route)
->>>>>>> 57cd434ae7cd4c9ad5832277c3bc41089370131f
 app.post("/verify-payment", async (req, res) => {
   try {
     const {
@@ -146,7 +123,6 @@ app.post("/verify-payment", async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid Signature" });
     }
 
-<<<<<<< HEAD
     // ✅ Enhanced data processing to handle both simple and complex formats
     const safeToString = (value) => {
       if (value === null || value === undefined) return "";
@@ -241,25 +217,12 @@ app.post("/verify-payment", async (req, res) => {
     console.log("📋 Processed booking data:", plainBookingData);
     console.log("🔍 Original booking data keys:", Object.keys(bookingData || {}));
 
-=======
-    // ✅ Flatten and validate booking data
-    const plainBookingData = {
-      name: bookingData?.name?.toString?.() || "",
-      roomType: bookingData?.roomType?.toString?.() || "",
-      fromDate: bookingData?.fromDate?.toString?.() || "",
-      toDate: bookingData?.toDate?.toString?.() || "",
-      email: bookingData?.email?.toString?.() || "",
-      userId: bookingData?.userId?.toString?.() || ""
-    };
-
->>>>>>> 57cd434ae7cd4c9ad5832277c3bc41089370131f
     const payload = {
       orderId: razorpay_order_id,
       paymentId: razorpay_payment_id,
       verified: true,
       bookingData: plainBookingData,
       source: "verify-payment",
-<<<<<<< HEAD
       timestamp: new Date().toISOString()
     };
 
@@ -291,29 +254,11 @@ app.post("/verify-payment", async (req, res) => {
   }
 });
 
-// ✅ 3. Razorpay Webhook (Keep existing code)
-app.post("/webhook", async (req, res) => {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-  const signature = req.headers["x-razorpay-signature"];
-  const body = req.body.toString();
-=======
-    };
-
-    await storePaymentDetails(payload);
-
-    res.json({ success: true, message: "Payment Verified" });
-  } catch (err) {
-    console.error("Firestore Save Error:", err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
 // ✅ 3. Razorpay Webhook
 app.post("/webhook", async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
   const signature = req.headers["x-razorpay-signature"];
   const body = req.body.toString(); // because raw
->>>>>>> 57cd434ae7cd4c9ad5832277c3bc41089370131f
 
   try {
     const expectedSignature = crypto
@@ -335,10 +280,7 @@ app.post("/webhook", async (req, res) => {
         razorpayData: entity,
         event,
         source: "webhook",
-<<<<<<< HEAD
         timestamp: new Date().toISOString()
-=======
->>>>>>> 57cd434ae7cd4c9ad5832277c3bc41089370131f
       });
       console.log("✅ Webhook handled: payment.captured");
     }
