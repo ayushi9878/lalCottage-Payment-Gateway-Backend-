@@ -4,6 +4,7 @@ const Razorpay = require("razorpay");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 const { storePaymentDetails } = require("./storePayment");
 
 dotenv.config();
@@ -25,6 +26,160 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
+
+// 📧 SMTP Configuration
+const createTransporter = () => {
+  return nodemailer.createTransporter({
+    host: process.env.SMTP_HOST, // e.g., smtp.gmail.com
+    port: process.env.SMTP_PORT || 587,
+    secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
+    auth: {
+      user: process.env.SMTP_USER, // your email
+      pass: process.env.SMTP_PASS, // your email password or app password
+    },
+  });
+};
+
+// 📧 Email Templates
+const generatePaymentConfirmationEmail = (bookingData, paymentDetails) => {
+  const {
+    name,
+    email,
+    roomType,
+    fromDate,
+    toDate,
+    guests,
+    totalAmount,
+    bookingId,
+    numberOfNights
+  } = bookingData;
+
+  const { paymentId, orderId } = paymentDetails;
+
+  return {
+    from: `"${process.env.BUSINESS_NAME || 'Your Hotel'}" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject: `Payment Confirmation - Booking #${bookingId}`,
+    html: `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Confirmation</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #4CAF50; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+            .success-icon { font-size: 48px; color: #4CAF50; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+            th { background-color: #f2f2f2; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="success-icon">✅</div>
+                <h1>Payment Confirmed!</h1>
+                <p>Thank you for your booking</p>
+            </div>
+            
+            <div class="content">
+                <h2>Dear ${name},</h2>
+                <p>Your payment has been successfully processed. Here are your booking details:</p>
+                
+                <div class="booking-details">
+                    <h3>Booking Information</h3>
+                    <table>
+                        <tr><th>Booking ID</th><td>#${bookingId}</td></tr>
+                        <tr><th>Room Type</th><td>${roomType}</td></tr>
+                        <tr><th>Check-in Date</th><td>${fromDate}</td></tr>
+                        <tr><th>Check-out Date</th><td>${toDate}</td></tr>
+                        <tr><th>Number of Nights</th><td>${numberOfNights}</td></tr>
+                        <tr><th>Guests</th><td>${guests}</td></tr>
+                        <tr><th>Total Amount</th><td>₹${totalAmount}</td></tr>
+                    </table>
+                </div>
+                
+                <div class="booking-details">
+                    <h3>Payment Information</h3>
+                    <table>
+                        <tr><th>Payment ID</th><td>${paymentId}</td></tr>
+                        <tr><th>Order ID</th><td>${orderId}</td></tr>
+                        <tr><th>Payment Status</th><td><span style="color: #4CAF50; font-weight: bold;">SUCCESS</span></td></tr>
+                        <tr><th>Payment Date</th><td>${new Date().toLocaleDateString('en-IN')}</td></tr>
+                    </table>
+                </div>
+                
+                <p><strong>What's Next?</strong></p>
+                <ul>
+                    <li>You will receive a detailed booking confirmation shortly</li>
+                    <li>Please keep this email for your records</li>
+                    <li>Contact us if you have any questions</li>
+                </ul>
+            </div>
+            
+            <div class="footer">
+                <p>Thank you for choosing us!</p>
+                <p>If you have any questions, please contact us at ${process.env.BUSINESS_EMAIL || process.env.SMTP_USER}</p>
+                <p>Phone: ${process.env.BUSINESS_PHONE || 'Contact us'}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `,
+    text: `
+Payment Confirmation - Booking #${bookingId}
+
+Dear ${name},
+
+Your payment has been successfully processed!
+
+Booking Details:
+- Booking ID: #${bookingId}
+- Room Type: ${roomType}
+- Check-in: ${fromDate}
+- Check-out: ${toDate}
+- Nights: ${numberOfNights}
+- Guests: ${guests}
+- Total Amount: ₹${totalAmount}
+
+Payment Details:
+- Payment ID: ${paymentId}
+- Order ID: ${orderId}
+- Status: SUCCESS
+- Date: ${new Date().toLocaleDateString('en-IN')}
+
+Thank you for choosing us!
+    `
+  };
+};
+
+// 📧 Send Email Function
+const sendPaymentConfirmationEmail = async (bookingData, paymentDetails) => {
+  try {
+    if (!bookingData.email) {
+      console.log("⚠️ No email provided, skipping email notification");
+      return { success: false, message: "No email provided" };
+    }
+
+    const transporter = createTransporter();
+    const emailOptions = generatePaymentConfirmationEmail(bookingData, paymentDetails);
+    
+    const info = await transporter.sendMail(emailOptions);
+    
+    console.log("✅ Payment confirmation email sent:", info.messageId);
+    return { success: true, messageId: info.messageId };
+    
+  } catch (error) {
+    console.error("❌ Failed to send payment confirmation email:", error);
+    return { success: false, error: error.message };
+  }
+};
 
 // ✅ 1. Create Order (Fixed to handle complex booking data)
 app.post("/create-orderId", async (req, res) => {
@@ -97,7 +252,7 @@ app.post("/create-orderId", async (req, res) => {
   }
 });
 
-// ✅ 2. Verify Payment (Updated to handle complex booking data)
+// ✅ 2. Verify Payment (Updated with Email Notification)
 app.post("/verify-payment", async (req, res) => {
   try {
     const {
@@ -229,11 +384,19 @@ app.post("/verify-payment", async (req, res) => {
     // Store payment details
     await storePaymentDetails(payload);
 
+    // 📧 Send payment confirmation email
+    const emailResult = await sendPaymentConfirmationEmail(
+      plainBookingData, 
+      { paymentId: razorpay_payment_id, orderId: razorpay_order_id }
+    );
+
     res.json({ 
       success: true, 
       message: "Payment Verified Successfully",
       bookingId: plainBookingData.bookingId,
-      paymentId: razorpay_payment_id
+      paymentId: razorpay_payment_id,
+      emailSent: emailResult.success,
+      emailMessage: emailResult.success ? "Confirmation email sent" : "Email sending failed"
     });
     
   } catch (err) {
@@ -254,7 +417,7 @@ app.post("/verify-payment", async (req, res) => {
   }
 });
 
-// ✅ 3. Razorpay Webhook
+// ✅ 3. Razorpay Webhook (Updated with Email Notification)
 app.post("/webhook", async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
   const signature = req.headers["x-razorpay-signature"];
@@ -282,6 +445,28 @@ app.post("/webhook", async (req, res) => {
         source: "webhook",
         timestamp: new Date().toISOString()
       });
+
+      // 📧 Try to send email if we have booking data in notes
+      if (entity.notes && entity.notes.email) {
+        const bookingData = {
+          name: entity.notes.name || "Customer",
+          email: entity.notes.email,
+          phone: entity.notes.phone || "",
+          roomType: entity.notes.roomType || "Heritage Room",
+          fromDate: entity.notes.fromDate || "",
+          toDate: entity.notes.toDate || "",
+          guests: entity.notes.guests || "1",
+          totalAmount: (entity.amount / 100).toString(),
+          bookingId: entity.notes.bookingId || entity.id,
+          numberOfNights: entity.notes.nights || "1"
+        };
+
+        await sendPaymentConfirmationEmail(
+          bookingData,
+          { paymentId: entity.id, orderId: entity.order_id }
+        );
+      }
+
       console.log("✅ Webhook handled: payment.captured");
     }
 
@@ -289,6 +474,45 @@ app.post("/webhook", async (req, res) => {
   } catch (error) {
     console.error("❌ Webhook error:", error.message);
     return res.status(500).send("Internal Server Error");
+  }
+});
+
+// 📧 Test Email Endpoint (Optional - for testing)
+app.post("/test-email", async (req, res) => {
+  try {
+    const { email, name = "Test User" } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email required" });
+    }
+
+    const testBookingData = {
+      name,
+      email,
+      roomType: "Heritage Room",
+      fromDate: "2025-01-15",
+      toDate: "2025-01-17",
+      guests: "2",
+      totalAmount: "5000",
+      bookingId: "TEST123",
+      numberOfNights: "2"
+    };
+
+    const testPaymentDetails = {
+      paymentId: "pay_test123",
+      orderId: "order_test123"
+    };
+
+    const result = await sendPaymentConfirmationEmail(testBookingData, testPaymentDetails);
+    
+    res.json({
+      success: result.success,
+      message: result.success ? "Test email sent successfully" : "Failed to send test email",
+      error: result.error
+    });
+    
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
