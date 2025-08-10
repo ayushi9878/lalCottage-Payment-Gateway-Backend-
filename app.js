@@ -29,7 +29,7 @@ const razorpay = new Razorpay({
 
 // 📧 SMTP Configuration
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST, // e.g., smtp.gmail.com
     port: process.env.SMTP_PORT || 587,
     secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
